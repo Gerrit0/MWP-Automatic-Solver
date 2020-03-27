@@ -278,7 +278,7 @@ if __name__ == "__main__":
             else:
                 txt, exp = get_as_tuple(example)
 
-                masked_txt, masked_exp, _ = NumberTag(txt, exp).get_masked()
+                masked_txt, masked_exp = NumberTag(txt, exp).get_masked()
 
                 if not EQUALS_SIGN:
                     train_equations.append(expressionize(masked_exp))
@@ -609,11 +609,11 @@ if __name__ == "__main__":
 
                 clean_q, clean_e = tagger.get_originals()
 
-                masked_input, masked_equation, mask_map = tagger.get_masked()
+                masked_input, masked_equation = tagger.get_masked()
 
                 predicted = translate(masked_input)
 
-                unmasked_prediction = tagger.apply_map(predicted, mask_map)
+                unmasked_prediction = tagger.unmask_sentence(predicted)
 
                 logger.plog(f"Input: {clean_q}")
                 logger.plog(f"Hypothesis: {unmasked_prediction}")
@@ -641,10 +641,10 @@ if __name__ == "__main__":
         inp = input("Enter a MWP > ")
 
         tagger = NumberTag(inp, "")
-        masked_input, _, mask_map = tagger.get_masked()
+        masked_input, _ = tagger.get_masked()
 
         predicted = translate(masked_input)
-        unmasked_prediction = tagger.apply_map(predicted, mask_map)
+        unmasked_prediction = tagger.unmask_sentence(predicted)
 
         print(f"Possible Equation: {unmasked_prediction}")
 

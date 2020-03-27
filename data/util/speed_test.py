@@ -182,12 +182,12 @@ if __name__ == "__main__":
 
         clean_q, _ = tagger.get_originals()
 
-        masked_input, _, mask_map = tagger.get_masked()
+        masked_input, _ = tagger.get_masked()
 
         predicted = translate(masked_input)
 
         # The network is done once it predicts the expression
-        hypothesis = tagger.apply_map(predicted, mask_map)
+        hypothesis = tagger.unmask_sentence(predicted)
 
         # Record the time taken in seconds
         times.append(time.time() - start)

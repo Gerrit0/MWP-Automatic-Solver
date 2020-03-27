@@ -1,80 +1,85 @@
 import re
 
+_TAGS = ['x', 'y', 'z', 'j', 'q', 'v', 'w', 'r']
+
+def _normalize_numbers(sentence: str) -> str:
+    """ Normalize the numbers in the sentence so that they match a standard format.
+    Removes trailing zeros from decimal places
+
+    >>> _normalize_numbers("123.0001")
+    '123.0001'
+    >>> _normalize_numbers("123.000")
+    '123'
+    >>> _normalize_numbers("12.10")
+    '12.1'
+    """
+    return re.sub(r"\.(\d*?)0+\b", lambda m: f".{m[1]}" if len(m[1]) else "", sentence)
+
 
 class NumberTag():
+    """ Used to tag MWPs, replacing numbers from the equation with specific tags
+    so that the network doesn't get hung up on specific numeric values.
+
+    >>> nt = NumberTag("What is 123.0 added to 1.5 ?", "x = 123.0 + 1.5")
+    >>> nt.get_originals()
+    ('What is 123 added to 1.5 ?', 'x = 123 + 1.5')
+    >>> masked = nt.get_masked(); masked
+    ('What is <x> added to <y> ?', 'x = <x> + <y>')
+    >>> nt.unmask_sentence(masked[0])
+    'What is 123 added to 1.5 ?'
+
+    """
     def __init__(self, sentence, equation):
-        self.__original_sentence = self.__ints(sentence)
-        self.__original_equation = self.__ints(equation)
+        self.__original_sentence = _normalize_numbers(sentence)
+        self.__original_equation = _normalize_numbers(equation)
 
-        self.__number_map = self.__map_numbers(self.__original_sentence,
-                                               self.__original_equation)
-
-        self.__tagged_sentence = self.__number_map[0]
-        self.__tagged_equation = self.__number_map[1]
-        self.__lookup_table = self.__number_map[2]
-
-        self.__tags = ['x', 'y', 'z', 'j', 'q', 'v', 'w', 'r']
+        self.__tagged_sentence, self.__tagged_equation, self.__lookup_table = self.__map_numbers(
+            self.__original_sentence,
+            self.__original_equation)
 
     def __map_numbers(self, sentence, equation):
         # Replaces numbers in a sentence with keyed tags
-        splitput = sentence.split()
-        spliteq = equation.split()
+        sentence_list = sentence.split()
+        equation_list = equation.split()
         lookup_dict = {}
 
-        for i, word in enumerate(splitput):
+        for i, word in enumerate(sentence_list):
             try:
                 maybe_number = float(word)
-                index = len(lookup_dict)
+            except ValueError:
+                continue
+            # If this throws, we want to know about it so we add more variables to _TAGS.
+            key = f"<{_TAGS[len(lookup_dict)]}>"
+            lookup_dict[key] = word
+            sentence_list[i] = key
 
-                key = f"<{self.__tags[index]}>"
+        # Invert the lookup_dict to allow fast lookup of words.
+        adjust_dict = { v: k for k, v in lookup_dict.items() }
 
-                lookup_dict[key] = word
+        for i, word in enumerate(equation_list):
+            if word in adjust_dict:
+                equation_list[i] = adjust_dict[word]
+                del adjust_dict[word]
 
-                splitput[i] = key
-            except:
-                pass
-
-        adjust_dict = lookup_dict.copy()
-
-        for i, word in enumerate(spliteq):
-            try:
-                for k, v in adjust_dict.items():
-                    if word == v:
-                        spliteq[i] = k
-                        del adjust_dict[k]
-                        break
-            except:
-                pass
-
-        return " ".join(splitput), " ".join(spliteq), lookup_dict
-
-    def __ints(self, sentence):
-        # For example here, change 132.0 to 132, but leave 2.03 as is
-        return re.sub(r"\.0[^0-9]", " ", sentence)
+        return " ".join(sentence_list), " ".join(equation_list), lookup_dict
 
     def get_originals(self):
         return self.__original_sentence, self.__original_equation
 
     def get_masked(self):
-        return self.__tagged_sentence, self.__tagged_equation, self.__lookup_table
+        return self.__tagged_sentence, self.__tagged_equation
 
-    def apply_map(self, sentence, lookup):
-        splitput = sentence.split()
+    def unmask_sentence(self, sentence):
+        """ Unmask a given sentence according to the map created from the original inputs. """
+        words = sentence.split()
 
-        for i, word in enumerate(splitput):
-            try:
-                if word in lookup:
-                    splitput[i] = lookup[word]
-            except:
-                pass
+        for i, word in enumerate(words):
+            if word in self.__lookup_table:
+                words[i] = self.__lookup_table[word]
 
-        return " ".join(splitput)
+        return " ".join(words)
 
 
 if __name__ == "__main__":
-    problem, equation = "there are 128 books in a library . they are arranged on shelves that hold 4 books each . how many shelves are in the library ?", "x = 4 / 4"
-    problem_tuple = NumberTag(problem, equation)
-
-    print(problem_tuple.get_masked())
-
-    print(problem_tuple.get_originals())
+    import doctest
+    doctest.testmod()
