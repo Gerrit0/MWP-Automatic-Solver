@@ -514,7 +514,7 @@ if __name__ == "__main__":
             settings["model"] = MODEL_NAME
 
             with open(os.path.join(DIR_PATH, sys.argv[1]), mode="w") as fh:
-                json.dump(settings, fh)
+                json.dump(settings, fh, indent=2)
 
             break
 
