@@ -79,6 +79,9 @@ class NumberTag():
 
         return " ".join(words)
 
+    def __repr__(self):
+        return f"NumberTag({repr(self.__original_sentence[:15])}, {repr(self.__original_equation)}, {repr(self.__lookup_table)})"
+
 
 if __name__ == "__main__":
     import doctest
